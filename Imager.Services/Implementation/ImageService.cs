@@ -1,9 +1,12 @@
 ﻿using Imager.Database;
 using Imager.Domain.DTO.ImageEntity;
 using Imager.Domain.Entities;
+using Imager.Domain.Errors;
+using Imager.Domain.Result;
 using Imager.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Imager.Services.Implementation;
 
@@ -13,31 +16,36 @@ public class ImageService : IImageService
     private readonly ApplicationDbContext _dbContext;
     private readonly IUserService _userService;
 
-    public ImageService(string uploadDir, ApplicationDbContext dbContext, IUserService userService)
+    public ImageService(IConfiguration configuration, ApplicationDbContext dbContext, IUserService userService)
     {
-        _uploadDir = uploadDir;
+        _uploadDir = configuration.GetRequiredSection("uploadDir").Value 
+                     ?? throw new NullReferenceException("Upload dir is null");
         _dbContext = dbContext;
         _userService = userService;
+        
+        if (!Directory.Exists(_uploadDir))
+        {
+            Directory.CreateDirectory(_uploadDir);
+        }
     }
 
     public async Task<IEnumerable<ImageEntityDto>> GetUserImagesAsync(Guid userId)
     {
-        return await _dbContext.Images.Where(i => i.Author.Id.Equals(userId))
+        return await _dbContext.Images.Where(i => i.Author.Id == userId)
             .Select(i => new ImageEntityDto
             {
                 Id = i.Id,
-                Link = i.FileSystemName,
                 UploadedAt = i.UploadedAt
             })
             .ToListAsync();
     }
 
-    public async Task<ImageEntity> UploadImageAsync(IFormFile file, Guid authorId)
+    public async Task<Result<ImageEntity, ImageError>> UploadImageAsync(IFormFile file, Guid authorId)
     {
         var author = await _userService.GetUserByIdAsync(authorId);
         if (author is null)
         {
-            throw new NotImplementedException();
+            return Result<ImageEntity, ImageError>.WithError(ImageError.AuthorNotFound);
         }
         
         var newFileName = Guid.NewGuid().ToString();
@@ -57,6 +65,14 @@ public class ImageService : IImageService
         };
         var entry = await _dbContext.AddAsync(newImageEntity);
         await _dbContext.SaveChangesAsync();
-        return entry.Entity;
+        
+        return Result<ImageEntity, ImageError>.Ok(entry.Entity);
+    }
+
+    public async Task<ImageEntity?> GetImageByIdAsync(Guid imageId)
+    {
+        return await _dbContext.Images
+            .Include(i => i.Author)
+            .FirstOrDefaultAsync(i => i.Id == imageId);
     }
 }

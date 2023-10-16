@@ -6,6 +6,7 @@ using Imager.Domain.Errors;
 using Imager.Domain.Models;
 using Imager.Domain.Result;
 using Imager.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Imager.Services.Implementation;
@@ -16,13 +17,15 @@ public class JwtTokenService : IJwtTokenService
     private readonly string _refreshTokenSecret;
 
     // ReSharper disable once ConvertConstructorToMemberInitializers
-    public JwtTokenService()
+    public JwtTokenService(IConfiguration configuration)
     {
-        _accessTokenSecret = "testAccessTokenSecret";
-        _refreshTokenSecret = "testRefreshTokenSecret";
+        _accessTokenSecret = configuration.GetRequiredSection("Jwt:accessTokenKey").Value 
+                             ?? throw new NullReferenceException("Access token key is empty");
+        _refreshTokenSecret = configuration.GetRequiredSection("Jwt:refreshTokenKey").Value
+                              ?? throw new NullReferenceException("Refresh token key is empty");
     }
 
-    public Result<string, JwtTokenError> GenerateAccessToken(Guid id, string login)
+    public string GenerateAccessToken(Guid id, string login)
     {
         var expiredDate = DateTime.UtcNow + TimeSpan.FromHours(3);
 
@@ -39,11 +42,11 @@ public class JwtTokenService : IJwtTokenService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
+            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature)
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        return Result<string, JwtTokenError>.Ok(tokenHandler.WriteToken(token));
+        return tokenHandler.WriteToken(token);
     }
 
     public async Task<Result<AccessTokenModel, JwtTokenError>> ParseAccessTokenAsync(string accessToken)
@@ -111,7 +114,7 @@ public class JwtTokenService : IJwtTokenService
         });
     }
 
-    public Result<string, JwtTokenError> GenerateRefreshToken(Guid id)
+    public string GenerateRefreshToken(Guid id)
     {
         var expiredDate = DateTime.UtcNow + TimeSpan.FromDays(7);
 
@@ -127,11 +130,11 @@ public class JwtTokenService : IJwtTokenService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
+            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature)
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        return Result<string, JwtTokenError>.Ok(tokenHandler.WriteToken(token));
+        return tokenHandler.WriteToken(token);
     }
 
     public async Task<Result<RefreshTokenModel, JwtTokenError>> ParseRefreshTokenAsync(string refreshToken)
