@@ -1,5 +1,7 @@
 ﻿using Imager.Database;
 using Imager.Domain.Entities;
+using Imager.Domain.Errors;
+using Imager.Domain.Result;
 using Imager.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,7 +40,7 @@ public class UserService : IUserService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task<(string, string)> AuthUserAsync(string login, string password)
+    public async Task<Result<(string, string), JwtTokenError>> AuthUserAsync(string login, string password)
     {
         var foundedUser = await GetUserByLoginAsync(login);
         if (foundedUser is null)
@@ -54,7 +56,7 @@ public class UserService : IUserService
 
         var accessToken = _jwtTokenService.GenerateAccessToken(foundedUser.Id, foundedUser.Login);
         var refreshToken = _jwtTokenService.GenerateRefreshToken(foundedUser.Id);
-        return (refreshToken, accessToken);
+        return Result<(string, string), JwtTokenError>
     }
 
     public async Task<bool> CheckIsUserFriendAsync(Guid from, Guid to)

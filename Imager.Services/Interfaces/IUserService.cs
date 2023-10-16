@@ -1,12 +1,14 @@
 ﻿using Imager.Domain.DTO.UserEntity;
 using Imager.Domain.Entities;
+using Imager.Domain.Errors;
+using Imager.Domain.Result;
 
 namespace Imager.Services.Interfaces;
 
 public interface IUserService
 {
     Task RegisterUserAsync(string login, string password);
-    Task<(string, string)> AuthUserAsync(string login, string password);
+    Task<Result<(string, string), JwtTokenError>> AuthUserAsync(string login, string password);
     /// <summary>
     /// Проверяет является ли пользователь с Id = from другом пользователю с Id = to
     /// </summary>
