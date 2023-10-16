@@ -11,7 +11,7 @@ public class UserEntityConfiguration : IEntityTypeConfiguration<UserEntity>
         builder.Metadata.FindNavigation(nameof(UserEntity.Images))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
 
-        builder.HasMany(e => e.Friend)
-            .WithMany(e => e.Friend);
+        builder.HasOne(e => e.Friends)
+            .WithOne(f => f.User);
     }
 }
