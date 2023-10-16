@@ -7,15 +7,18 @@ public class Result<TResult, TError>
 
     private Result(TResult result)
     {
+        IsFailure = false;
         _result = result;
     }
 
     private Result(TError error)
     {
+        IsFailure = true;
         _error = error;
     }
 
-    public bool IsError => _error is not null;
+    public bool IsFailure { get; }
+
     public TResult Unwrap() => _result ?? throw new NullReferenceException("Контент отсутствует");
     public TError UnwrapError() => _error ?? throw new NullReferenceException("Ошибка пуста");
     
